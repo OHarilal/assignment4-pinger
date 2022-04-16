@@ -5,6 +5,7 @@ import struct
 import time
 import select
 import binascii
+import statistics
 # Should use stdev
 
 ICMP_ECHO_REQUEST = 8
@@ -50,7 +51,14 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
         # Fill in start
 
         # Fetch the ICMP header from the IP packet
-
+        ICMPHeader = recPacket[20:28]
+        Type, Code, Checksum, packetID, Sequence = struct.unpack('bbHHh', ICMPHeader)
+        if packetID == ID:
+            BytesInDouble = struct.calcsize('d')
+            timeSent = struct.unpack('d', recPacket [28:28 + BytesInDouble]) [0]
+            return timeReceived - timeSent
+        else:
+            return ['0', '0.0', '0', '0.0']
         # Fill in end
         timeLeft = timeLeft - howLongInSelect
         if timeLeft <= 0:
@@ -109,15 +117,23 @@ def ping(host, timeout=1):
     
     #Send ping requests to a server separated by approximately one second
     #Add something here to collect the delays of each ping in a list so you can calculate vars after your ping
-    
+    time_to_live = []
     for i in range(0,4): #Four pings will be sent (loop runs for i=0, 1, 2, 3)
         delay = doOnePing(dest, timeout)
         print(delay)
         time.sleep(1)  # one second
-        
+        time_to_live.append(delay)
     #You should have the values of delay for each ping here; fill in calculation for packet_min, packet_avg, packet_max, and stdev
     #vars = [str(round(packet_min, 8)), str(round(packet_avg, 8)), str(round(packet_max, 8)),str(round(stdev(stdev_var), 8))]
+    print("Ping Calculations for " + dest + ':')
+    packet_min = (min(time_to_live))*1000
+    packet_max = (max(time_to_live))*1000
+    packet_avg = ((sum(time_to_live))/4)*1000
+    stdev_var = (statistics.stdev(time_to_live))*1000
 
+    print("results are in order: min/avg/max/standard_dev (" +str(round(packet_min, 8)) + "," + str(round(packet_max,8)) + "," + str(round(packet_avg,8)) + "," + str(round(stdev_var,8)) +")")
+    print("")
+    vars = [str(round(packet_min, 8)), str(round(packet_avg, 8)), str(round(packet_max, 8)),str(round(stdev_var, 8))]
     return vars
 
 if __name__ == '__main__':
